@@ -13,35 +13,18 @@ Members
 พัฒนาเว็บแอปสำหรับใช้งานจริง
 แสดงผลการทำนายแบบ real-time
 
-Diagram Architecture
-        ┌──────────────────────┐
-        │   Web Browser (User) │
-        │  Canvas Draw Number  │
-        └─────────┬────────────┘
-                  │ Base64 Image
-                  ▼
-        ┌──────────────────────┐
-        │   Flask Web Server   │
-        │   /predict API       │
-        └─────────┬────────────┘
-                  │ Preprocess Image
-                  ▼
-        ┌──────────────────────┐
-        │  PyTorch Model (.pt) │
-        │ CNN Classification   │
-        └─────────┬────────────┘
-                  │ Prediction
-                  ▼
-        ┌──────────────────────┐
-        │  JSON Response       │
-        │ Label + Confidence   │
-        └──────────────────────┘
-                  │
-                  ▼
-        ┌──────────────────────┐
-        │  Frontend Display    │
-        │ Result + Prob Graph  │
-        └──────────────────────┘
+
+📊 System Architecture (Table Format)
+| Step | Component               | Role               | Input                   | Process                                           | Output                               |
+| ---- | ----------------------- | ------------------ | ----------------------- | ------------------------------------------------- | ------------------------------------ |
+| 1    | Web Browser (User)      | User Interface     | Mouse drawing on canvas | Draw Thai digit (51–55)                           | Base64 encoded image                 |
+| 2    | Flask Web Server        | Backend API Server | Base64 image            | Receive request at `/predict` endpoint            | Raw image data                       |
+| 3    | Image Preprocessing     | Data Preparation   | Raw image               | Resize (32×32), grayscale, normalize              | Tensor format                        |
+| 4    | PyTorch CNN Model (.pt) | AI Model           | Processed tensor        | Convolutional feature extraction + classification | Predicted class (51–55)              |
+| 5    | Prediction Engine       | Result Handler     | Model output            | Softmax probability calculation                   | Label + confidence scores            |
+| 6    | JSON Response           | API Response Layer | Prediction result       | Format response as JSON                           | `{label, confidence, probabilities}` |
+| 7    | Frontend Display        | UI Result Renderer | JSON response           | Show result + probability bars                    | Prediction UI output                 |
+
 
 
 Features
