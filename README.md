@@ -56,7 +56,8 @@ Git / GitHub
 
 วิธีการใช้งาน
 รันระบบ
-cd thai-digit-recognition/webapp
+cd thai-digit-recognition/webapp 
+ตามด้วย
 python app.py
 
 จะได้ http://192.168.1.105:5000
