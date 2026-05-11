@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Thai Digit Recognition{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:   #4f46e5;
+      --primary-d: #3730a3;
+      --success:   #10b981;
+      --danger:    #ef4444;
+      --warning:   #f59e0b;
+      --info:      #3b82f6;
+      --bg:        #f8fafc;
+      --card:      #ffffff;
+      --text:      #1e293b;
+      --muted:     #64748b;
+      --border:    #e2e8f0;
+      --radius:    12px;
+      --shadow:    0 4px 24px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ── */
+    nav {
+      background: var(--primary);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      box-shadow: 0 2px 8px rgba(79,70,229,.3);
+    }
+    nav .brand {
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    nav .nav-links { display: flex; gap: 1rem; }
+    nav .nav-links a {
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      font-size: .95rem;
+      padding: .4rem .8rem;
+      border-radius: 6px;
+      transition: background .2s;
+    }
+    nav .nav-links a:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+    /* ── Container ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .6rem 1.4rem;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      text-decoration: none;
+    }
+    .btn-primary  { background: var(--primary);  color: #fff; }
+    .btn-primary:hover  { background: var(--primary-d); transform: translateY(-1px); }
+    .btn-success  { background: var(--success);  color: #fff; }
+    .btn-success:hover  { filter: brightness(1.1); }
+    .btn-danger   { background: var(--danger);   color: #fff; }
+    .btn-danger:hover   { filter: brightness(1.1); }
+    .btn-outline  { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn-outline:hover  { background: var(--primary); color: #fff; }
+    .btn-sm { padding: .35rem .9rem; font-size: .875rem; }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: .85rem 1.2rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: .95rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .alert-success { background: #d1fae5; color: #065f46; border-left: 4px solid var(--success); }
+    .alert-danger  { background: #fee2e2; color: #991b1b; border-left: 4px solid var(--danger); }
+    .alert-warning { background: #fef3c7; color: #92400e; border-left: 4px solid var(--warning); }
+    .alert-info    { background: #dbeafe; color: #1e40af; border-left: 4px solid var(--info); }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 1.2rem; }
+    .form-label { display: block; font-weight: 600; margin-bottom: .4rem; font-size: .95rem; }
+    .form-control {
+      width: 100%;
+      padding: .6rem .9rem;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color .2s;
+      background: #fff;
+    }
+    .form-control:focus { outline: none; border-color: var(--primary); }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      padding: .2rem .6rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-danger  { background: #fee2e2; color: #991b1b; }
+    .badge-info    { background: #dbeafe; color: #1e40af; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { font-weight: 700; color: var(--muted); font-size: .875rem; text-transform: uppercase; letter-spacing: .05em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid rgba(79,70,229,.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .container { padding: 1rem .75rem; }
+      .card { padding: 1.25rem; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <a href="{{ url_for('index') }}" class="brand">🔢 Thai Digit AI</a>
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}">หน้าหลัก</a>
+      <a href="{{ url_for('admin_login') }}">Admin</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+          {% if category == 'success' %}✅{% elif category == 'danger' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "pip install -r requirements.txt",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Generate Dataset",
+      "type": "shell",
+      "command": "python dataset/generate_dataset.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Train Model",
+      "type": "shell",
+      "command": "python training/train_model.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Run Web App",
+      "type": "shell",
+      "command": "python app.py",
+      "options": { "cwd": "${workspaceFolder}/webapp" },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "Full Setup (Dataset + Train + Run)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Install Dependencies", "Generate Dataset", "Train Model", "Run Web App"],
+      "group": "build"
+    }
+  ]
+}

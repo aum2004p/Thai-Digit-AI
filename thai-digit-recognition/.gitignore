@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Dataset images (generated)
+dataset/train/
+dataset/test/
+
+# Model files (large)
+model/saved_model/
+model/*.keras
+model/*.h5
+model/training_history.json
+
+# Uploads
+webapp/uploads/
+
+# VS Code
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db

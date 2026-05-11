@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Flask App",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/webapp/app.py",
+      "console": "integratedTerminal",
+      "env": {
+        "FLASK_ENV": "development",
+        "FLASK_DEBUG": "1"
+      },
+      "cwd": "${workspaceFolder}/webapp"
+    },
+    {
+      "name": "Generate Dataset",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/dataset/generate_dataset.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Train Model",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/training/train_model.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% block title %}Thai Digit Recognition - เขียนเลขไทย{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 700px) { .page-grid { grid-template-columns: 1fr; } }
+
+  .canvas-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  .canvas-container {
+    position: relative;
+    border: 3px solid var(--primary);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: crosshair;
+    background: #fff;
+    box-shadow: 0 0 0 6px rgba(79,70,229,.08);
+    touch-action: none;
+  }
+  #drawCanvas { display: block; width: 320px; height: 320px; }
+  .canvas-hint { font-size: .85rem; color: var(--muted); text-align: center; }
+
+  .brush-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .brush-controls label { font-size: .9rem; color: var(--muted); }
+  input[type=range] { width: 100px; accent-color: var(--primary); }
+
+  .action-buttons {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .result-panel { min-height: 200px; }
+  .result-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    color: var(--muted);
+    gap: .5rem;
+  }
+  .result-empty .icon { font-size: 3rem; }
+
+  .prediction-main { text-align: center; padding: 1rem 0; }
+  .prediction-digit {
+    font-size: 5rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .prediction-label { font-size: 1.5rem; font-weight: 600; color: var(--text); margin-top: .25rem; }
+  .prediction-confidence { font-size: 1rem; color: var(--muted); margin-top: .25rem; }
+
+  .prob-list { margin-top: 1.25rem; }
+  .prob-item { display: flex; align-items: center; gap: .75rem; margin-bottom: .6rem; }
+  .prob-label { width: 60px; font-size: .9rem; font-weight: 600; text-align: right; flex-shrink: 0; }
+  .prob-bar-bg { flex: 1; height: 18px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .prob-bar { height: 100%; border-radius: 999px; background: var(--primary); transition: width .5s ease; }
+  .prob-bar.top { background: var(--success); }
+  .prob-pct { width: 48px; font-size: .85rem; color: var(--muted); text-align: right; flex-shrink: 0; }
+
+  .loading-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.7);
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    z-index: 10;
+  }
+  .loading-overlay.active { display: flex; }
+
+  .instructions {
+    background: linear-gradient(135deg, #ede9fe, #dbeafe);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .instructions h3 { font-size: 1rem; margin-bottom: .5rem; color: var(--primary-d); }
+  .instructions ul { padding-left: 1.2rem; font-size: .9rem; color: var(--text); line-height: 1.8; }
+
+  .digit-ref { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: .75rem; }
+  .digit-chip {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    padding: .3rem .7rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="font-size:1.6rem;font-weight:700;margin-bottom:1.25rem;">
+  🖊️ ระบบจดจำเลขไทยลายมือ
+</h1>
+
+<div class="instructions">
+  <h3>📌 วิธีใช้งาน</h3>
+  <ul>
+    <li>เขียนเลขไทย <strong>51–55</strong> ลงในกรอบด้านล่าง</li>
+    <li>กด <strong>"ทำนาย"</strong> เพื่อให้ AI วิเคราะห์</li>
+    <li>กด <strong>"ล้าง"</strong> เพื่อเริ่มใหม่</li>
+  </ul>
+  <div class="digit-ref">
+    <span class="digit-chip">51 = ๕๑</span>
+    <span class="digit-chip">52 = ๕๒</span>
+    <span class="digit-chip">53 = ๕๓</span>
+    <span class="digit-chip">54 = ๕๔</span>
+    <span class="digit-chip">55 = ๕๕</span>
+  </div>
+</div>
+
+<div class="page-grid">
+  <!-- Drawing panel -->
+  <div class="card">
+    <div class="card-title">✏️ เขียนเลขที่นี่</div>
+    <div class="canvas-wrapper">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="drawCanvas" width="320" height="320"></canvas>
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner"></div>
+        </div>
+      </div>
+      <p class="canvas-hint">วาดเลขไทยในกรอบสีขาว</p>
+
+      <div class="brush-controls">
+        <label for="brushSize">ขนาดปากกา:</label>
+        <input type="range" id="brushSize" min="4" max="30" value="14" />
+        <span id="brushSizeVal">14</span>px
+      </div>
+
+      <div class="action-buttons">
+        <button class="btn btn-primary" id="predictBtn" onclick="predict()">
+          🔍 ทำนาย
+        </button>
+        <button class="btn btn-outline" onclick="clearCanvas()">
+          🗑️ ล้าง
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result panel -->
+  <div class="card result-panel">
+    <div class="card-title">📊 ผลการทำนาย</div>
+    <div class="result-empty" id="resultEmpty">
+      <span class="icon">🤔</span>
+      <span>เขียนเลขแล้วกด "ทำนาย"</span>
+    </div>
+    <div id="resultContent" style="display:none;">
+      <div class="prediction-main">
+        <div class="prediction-digit" id="predDigit">—</div>
+        <div class="prediction-label" id="predLabel">—</div>
+        <div class="prediction-confidence" id="predConf">—</div>
+      </div>
+      <div class="prob-list" id="probList"></div>
+    </div>
+    <div id="resultError" style="display:none;" class="alert alert-danger"></div>
+  </div>
+</div>
+
+<script>
+const canvas  = document.getElementById('drawCanvas');
+const ctx     = canvas.getContext('2d');
+let drawing   = false;
+let lastX = 0, lastY = 0;
+
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.strokeStyle = '#1e293b';
+ctx.lineJoin    = 'round';
+ctx.lineCap     = 'round';
+
+const brushInput = document.getElementById('brushSize');
+const brushVal   = document.getElementById('brushSizeVal');
+brushInput.addEventListener('input', () => {
+  brushVal.textContent = brushInput.value;
+  ctx.lineWidth = parseInt(brushInput.value);
+});
+ctx.lineWidth = parseInt(brushInput.value);
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  if (e.touches) {
+    return {
+      x: (e.touches[0].clientX - rect.left) * scaleX,
+      y: (e.touches[0].clientY - rect.top)  * scaleY,
+    };
+  }
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top)  * scaleY,
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  drawing = true;
+  const pos = getPos(e);
+  lastX = pos.x; lastY = pos.y;
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+  ctx.fillStyle = '#1e293b';
+  ctx.fill();
+}
+
+function draw(e) {
+  if (!drawing) return;
+  e.preventDefault();
+  const pos = getPos(e);
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+  lastX = pos.x; lastY = pos.y;
+}
+
+function stopDraw() { drawing = false; }
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  draw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  draw,      { passive: false });
+canvas.addEventListener('touchend',   stopDraw);
+
+function clearCanvas() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('resultEmpty').style.display   = 'flex';
+  document.getElementById('resultContent').style.display = 'none';
+  document.getElementById('resultError').style.display   = 'none';
+}
+
+async function predict() {
+  const overlay = document.getElementById('loadingOverlay');
+  const btn     = document.getElementById('predictBtn');
+  overlay.classList.add('active');
+  btn.disabled = true;
+
+  try {
+    const imageData = canvas.toDataURL('image/png');
+    const resp = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData }),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('resultEmpty').style.display   = 'none';
+    document.getElementById('resultError').style.display   = 'none';
+    document.getElementById('resultContent').style.display = 'block';
+
+    document.getElementById('predDigit').textContent = data.thai;
+    document.getElementById('predLabel').textContent = `เลข ${data.label}`;
+    document.getElementById('predConf').textContent  = `ความมั่นใจ ${data.confidence}%`;
+
+    const probList = document.getElementById('probList');
+    probList.innerHTML = '';
+    const sorted = [...data.all_probs].sort((a, b) => b.prob - a.prob);
+    sorted.forEach((item, idx) => {
+      const isTop = idx === 0;
+      probList.innerHTML += `
+        <div class="prob-item">
+          <div class="prob-label">${item.thai} (${item.label})</div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar ${isTop ? 'top' : ''}" style="width:${item.prob}%"></div>
+          </div>
+          <div class="prob-pct">${item.prob}%</div>
+        </div>`;
+    });
+
+  } catch (err) {
+    document.getElementById('resultEmpty').style.display   = 'none';
+    document.getElementById('resultContent').style.display = 'none';
+    document.getElementById('resultError').style.display   = 'block';
+    document.getElementById('resultError').textContent     = `เกิดข้อผิดพลาด: ${err.message}`;
+  } finally {
+    overlay.classList.remove('active');
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

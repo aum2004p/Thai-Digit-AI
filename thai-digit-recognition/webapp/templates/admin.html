@@ -1,0 +1,689 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - Thai Digit AI{% endblock %}
+
+{% block extra_head %}
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+  /* ── Status card ── */
+  .status-row { display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+  .status-icon { font-size: 1.5rem; }
+  .status-label { font-size: .85rem; color: var(--muted); }
+  .status-value { font-weight: 600; font-size: .95rem; }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: #fafafa;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: #ede9fe;
+  }
+  .upload-zone .upload-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+  .upload-zone p { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+  #fileInput { display: none; }
+
+  .file-selected {
+    display: none;
+    align-items: center;
+    gap: .75rem;
+    background: #ede9fe;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    margin-top: .75rem;
+  }
+  .file-selected.show { display: flex; }
+  .file-selected .file-name { font-weight: 600; flex: 1; }
+  .file-selected .file-size { color: var(--muted); font-size: .85rem; }
+
+  /* ── Activate toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin: 1rem 0;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: .3s;
+  }
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    left: 3px; top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .3s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+  /* ── Model list ── */
+  .model-list { max-height: 320px; overflow-y: auto; }
+  .model-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .model-item:last-child { border-bottom: none; }
+  .model-item .model-name { flex: 1; font-weight: 600; font-size: .9rem; word-break: break-all; }
+  .model-item .model-meta { font-size: .8rem; color: var(--muted); }
+
+  /* ── Accuracy display ── */
+  .accuracy-big {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--success);
+    text-align: center;
+    padding: .5rem 0;
+  }
+  .accuracy-label { text-align: center; color: var(--muted); font-size: .9rem; }
+
+  /* ── Image predict result ── */
+  .img-pred-result {
+    display: none;
+    background: linear-gradient(135deg, #ede9fe, #dbeafe);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+  }
+  .img-pred-result.show { display: block; }
+  .img-pred-digit { font-size: 3rem; font-weight: 700; color: var(--primary); }
+
+  /* ── Drawings grid ── */
+  .drawings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: .75rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: .25rem;
+  }
+  .drawing-card {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .2s, transform .2s;
+    background: #fff;
+    position: relative;
+  }
+  .drawing-card:hover { border-color: var(--primary); transform: scale(1.03); }
+  .drawing-card.selected { border-color: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,.25); }
+  .drawing-card img { width: 100%; display: block; image-rendering: pixelated; }
+  .drawing-card .drawing-name {
+    font-size: .65rem;
+    color: var(--muted);
+    padding: .2rem .3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .drawing-card .del-btn {
+    position: absolute;
+    top: 2px; right: 2px;
+    background: rgba(239,68,68,.85);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    width: 18px; height: 18px;
+    font-size: .7rem;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .drawing-card:hover .del-btn { display: flex; }
+
+  /* ── Prob mini bars ── */
+  .mini-prob { display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+  .mini-prob-label { width: 50px; font-size: .8rem; font-weight: 600; }
+  .mini-prob-bg { flex: 1; height: 12px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .mini-prob-bar { height: 100%; border-radius: 999px; background: var(--primary); }
+  .mini-prob-bar.top { background: var(--success); }
+  .mini-prob-pct { width: 40px; font-size: .78rem; color: var(--muted); text-align: right; }
+
+  /* ── Select label ── */
+  .label-select { display: flex; gap: .5rem; flex-wrap: wrap; margin: .75rem 0; }
+  .label-btn {
+    padding: .35rem .8rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: .95rem;
+    font-weight: 600;
+    transition: all .2s;
+  }
+  .label-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .label-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+  <h1 style="font-size:1.6rem;font-weight:700;">⚙️ Admin Dashboard</h1>
+  <div style="display:flex;gap:.75rem;align-items:center;">
+    <span style="color:var(--muted);font-size:.9rem;">👤 {{ session.admin_user }}</span>
+    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline btn-sm">ออกจากระบบ</a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">🏠 หน้าหลัก</a>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <!-- Model status -->
+  <div class="card">
+    <div class="card-title">🤖 สถานะโมเดลปัจจุบัน</div>
+
+    <div class="status-row">
+      <span class="status-icon">{{ '✅' if model_info.loaded else '❌' }}</span>
+      <div>
+        <div class="status-label">สถานะ</div>
+        <div class="status-value">
+          {% if model_info.loaded %}
+            <span class="badge badge-success">โหลดแล้ว</span>
+          {% else %}
+            <span class="badge badge-danger">ยังไม่ได้โหลด</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {% if model_info.path %}
+    <div class="status-row">
+      <span class="status-icon">📁</span>
+      <div>
+        <div class="status-label">ไฟล์โมเดล</div>
+        <div class="status-value">{{ model_info.path }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if model_info.loaded_at %}
+    <div class="status-row">
+      <span class="status-icon">🕐</span>
+      <div>
+        <div class="status-label">โหลดเมื่อ</div>
+        <div class="status-value">{{ model_info.loaded_at }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if model_info.accuracy %}
+    <div style="margin-top:1rem;">
+      <div class="accuracy-big">{{ "%.1f"|format(model_info.accuracy * 100) }}%</div>
+      <div class="accuracy-label">Test Accuracy</div>
+    </div>
+    {% endif %}
+
+    <div class="status-row" style="margin-top:1rem;">
+      <span class="status-icon">{{ '✅' if model_info.torch_available else '⚠️' }}</span>
+      <div>
+        <div class="status-label">PyTorch</div>
+        <div class="status-value">
+          {% if model_info.torch_available %}
+            <span class="badge badge-success">{{ model_info.torch_version }}</span>
+          {% else %}
+            <span class="badge badge-danger">ไม่พบ</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload new model -->
+  <div class="card">
+    <div class="card-title">📤 อัปโหลดโมเดลใหม่</div>
+
+    <form method="POST" action="{{ url_for('admin_upload_model') }}" enctype="multipart/form-data" id="uploadForm">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">☁️</div>
+        <strong>คลิกเพื่อเลือกไฟล์</strong>
+        <p>หรือลากไฟล์มาวางที่นี่</p>
+        <p style="margin-top:.5rem;font-size:.8rem;">รองรับ: .pt, .pth (PyTorch)</p>
+      </div>
+      <input type="file" id="fileInput" name="model_file" accept=".pt,.pth" onchange="onFileSelect(this)" />
+
+      <div class="file-selected" id="fileSelected">
+        <span>📄</span>
+        <span class="file-name" id="fileName">—</span>
+        <span class="file-size" id="fileSize">—</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="clearFile()">✕</button>
+      </div>
+
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" name="activate" id="activateToggle" checked />
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size:.95rem;">เปิดใช้งานโมเดลทันทีหลังอัปโหลด</span>
+      </div>
+
+      <button type="submit" class="btn btn-success" style="width:100%;justify-content:center;" id="uploadBtn" disabled>
+        📤 อัปโหลดโมเดล
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Uploaded models list -->
+<div class="card">
+  <div class="card-title">📋 รายการโมเดลที่อัปโหลด</div>
+  {% if uploaded_models %}
+  <div class="model-list">
+    <table>
+      <thead>
+        <tr>
+          <th>ชื่อไฟล์</th>
+          <th>ขนาด</th>
+          <th>วันที่แก้ไข</th>
+          <th>การดำเนินการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in uploaded_models %}
+        <tr>
+          <td>
+            <div class="model-name">{{ m.name }}</div>
+          </td>
+          <td>
+            <span class="model-meta">{{ "%.1f"|format(m.size / 1024) }} KB</span>
+          </td>
+          <td>
+            <span class="model-meta">{{ m.modified }}</span>
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('admin_activate_model', filename=m.name) }}" style="display:inline;">
+              <button type="submit" class="btn btn-primary btn-sm">⚡ เปิดใช้งาน</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:2rem;color:var(--muted);">
+    <div style="font-size:2rem;">📭</div>
+    <p style="margin-top:.5rem;">ยังไม่มีโมเดลที่อัปโหลด</p>
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- ── Section: Test predict with PNG ── -->
+<div class="card">
+  <div class="card-title">🖼️ ทดสอบทำนายจากรูปภาพ (.png)</div>
+  <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;">
+      <div class="upload-zone" id="imgPredZone" onclick="document.getElementById('imgPredInput').click()" style="padding:1.25rem;">
+        <div class="upload-icon" style="font-size:1.8rem;">🖼️</div>
+        <strong>คลิกเลือกรูป .png</strong>
+        <p style="font-size:.8rem;">หรือลากมาวาง</p>
+      </div>
+      <input type="file" id="imgPredInput" accept=".png,.jpg,.jpeg" style="display:none" onchange="onImgPredSelect(this)" />
+      <div id="imgPredPreview" style="display:none;margin-top:.75rem;text-align:center;">
+        <img id="imgPredThumb" style="max-width:120px;max-height:120px;border:2px solid var(--border);border-radius:8px;image-rendering:pixelated;" />
+        <p id="imgPredName" style="font-size:.8rem;color:var(--muted);margin-top:.3rem;"></p>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.75rem;" id="imgPredBtn" onclick="predictImage()" disabled>
+        🔍 ทำนาย
+      </button>
+    </div>
+    <div class="img-pred-result" id="imgPredResult" style="flex:1;min-width:200px;">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div class="img-pred-digit" id="imgPredDigit">—</div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:600;" id="imgPredLabel">—</div>
+          <div style="color:var(--muted);font-size:.9rem;" id="imgPredConf">—</div>
+        </div>
+      </div>
+      <div id="imgPredBars" style="margin-top:.75rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Section: Add PNG to dataset ── -->
+<div class="card">
+  <div class="card-title">➕ เพิ่มรูปภาพเข้า Dataset</div>
+  <form method="POST" action="{{ url_for('admin_add_to_dataset') }}" enctype="multipart/form-data" id="datasetForm">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div>
+        <div class="upload-zone" id="dsZone" onclick="document.getElementById('dsInput').click()" style="padding:1.25rem;">
+          <div class="upload-icon" style="font-size:1.8rem;">📁</div>
+          <strong>คลิกเลือกรูป .png</strong>
+          <p style="font-size:.8rem;">หรือลากมาวาง</p>
+        </div>
+        <input type="file" id="dsInput" name="image_file" accept=".png,.jpg,.jpeg" style="display:none" onchange="onDsSelect(this)" />
+        <div id="dsPreview" style="display:none;margin-top:.75rem;text-align:center;">
+          <img id="dsThumb" style="max-width:100px;border:2px solid var(--border);border-radius:8px;image-rendering:pixelated;" />
+          <p id="dsName" style="font-size:.8rem;color:var(--muted);margin-top:.3rem;"></p>
+        </div>
+      </div>
+      <div>
+        <div class="form-group">
+          <label class="form-label">Label (เลขที่ถูกต้อง)</label>
+          <div class="label-select" id="labelSelect">
+            {% for lbl in [51,52,53,54,55] %}
+            <button type="button" class="label-btn" data-label="{{ lbl }}" onclick="selectLabel(this.dataset.label)">
+              {{ lbl }}
+            </button>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="label" id="dsLabel" value="" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">ชุดข้อมูล</label>
+          <select name="split" class="form-control">
+            <option value="train">Train (สำหรับเทรน)</option>
+            <option value="test">Test (สำหรับทดสอบ)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-success" style="width:100%;justify-content:center;" id="dsBtn" disabled>
+          ➕ เพิ่มเข้า Dataset
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ── Section: Saved drawings from users ── -->
+<div class="card">
+  <div class="card-title">
+    🖊️ รูปที่ผู้ใช้เขียน (Saved Drawings)
+    <span id="drawingCount" class="badge badge-info" style="margin-left:.5rem;">...</span>
+  </div>
+
+  <!-- Add selected to dataset -->
+  <div id="drawingActions" style="display:none;margin-bottom:1rem;padding:.75rem;background:#f8fafc;border-radius:8px;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+    <span id="selectedCount" style="font-weight:600;font-size:.9rem;">เลือก 0 รูป</span>
+    <div class="label-select" id="drawingLabelSelect">
+      {% for lbl in [51,52,53,54,55] %}
+      <button type="button" class="label-btn" data-label="{{ lbl }}">{{ lbl }}</button>
+      {% endfor %}
+    </div>
+    <select id="drawingSplit" class="form-control" style="width:auto;">
+      <option value="train">Train</option>
+      <option value="test">Test</option>
+    </select>
+    <button class="btn btn-success btn-sm" id="addDrawingsBtn" onclick="addSelectedToDataset()" disabled>
+      ➕ เพิ่มเข้า Dataset
+    </button>
+    <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ ลบที่เลือก</button>
+    <button class="btn btn-outline btn-sm" onclick="clearSelection()">✕ ยกเลิก</button>
+  </div>
+
+  <div id="drawingsGrid" class="drawings-grid">
+    <div style="color:var(--muted);font-size:.9rem;padding:1rem;">⏳ กำลังโหลด...</div>
+  </div>
+  <div style="margin-top:.75rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+    <button class="btn btn-outline btn-sm" onclick="loadDrawings()">🔄 รีเฟรช</button>
+    <button class="btn btn-outline btn-sm" onclick="selectAllDrawings()">☑️ เลือกทั้งหมด</button>
+  </div>
+</div>
+
+<script>
+// ── Model upload ───────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+const uploadBtn  = document.getElementById('uploadBtn');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) { fileInput.files = e.dataTransfer.files; onFileSelect(fileInput); }
+});
+function onFileSelect(input) {
+  if (!input.files || !input.files.length) return;
+  const file = input.files[0];
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileSelected').classList.add('show');
+  uploadBtn.disabled = false;
+}
+function clearFile() {
+  fileInput.value = '';
+  document.getElementById('fileSelected').classList.remove('show');
+  uploadBtn.disabled = true;
+}
+document.getElementById('uploadForm').addEventListener('submit', () => {
+  uploadBtn.textContent = '⏳ กำลังอัปโหลด...';
+  uploadBtn.disabled = true;
+});
+
+// ── Image predict ──────────────────────────────────────────────────────────────
+let imgPredFile = null;
+const imgPredZone = document.getElementById('imgPredZone');
+imgPredZone.addEventListener('dragover', e => { e.preventDefault(); imgPredZone.classList.add('drag-over'); });
+imgPredZone.addEventListener('dragleave', () => imgPredZone.classList.remove('drag-over'));
+imgPredZone.addEventListener('drop', e => {
+  e.preventDefault(); imgPredZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    document.getElementById('imgPredInput').files = e.dataTransfer.files;
+    onImgPredSelect(document.getElementById('imgPredInput'));
+  }
+});
+function onImgPredSelect(input) {
+  if (!input.files || !input.files.length) return;
+  imgPredFile = input.files[0];
+  const url = URL.createObjectURL(imgPredFile);
+  document.getElementById('imgPredThumb').src = url;
+  document.getElementById('imgPredName').textContent = imgPredFile.name;
+  document.getElementById('imgPredPreview').style.display = 'block';
+  document.getElementById('imgPredBtn').disabled = false;
+}
+async function predictImage() {
+  if (!imgPredFile) return;
+  const btn = document.getElementById('imgPredBtn');
+  btn.disabled = true; btn.textContent = '⏳ กำลังทำนาย...';
+  const fd = new FormData();
+  fd.append('image_file', imgPredFile);
+  try {
+    const resp = await fetch('/admin/predict-image', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('imgPredDigit').textContent = data.thai;
+    document.getElementById('imgPredLabel').textContent = `เลข ${data.label}`;
+    document.getElementById('imgPredConf').textContent  = `ความมั่นใจ ${data.confidence}%`;
+    const bars = document.getElementById('imgPredBars');
+    bars.innerHTML = '';
+    [...data.all_probs].sort((a,b)=>b.prob-a.prob).forEach((item, i) => {
+      bars.innerHTML += `<div class="mini-prob">
+        <div class="mini-prob-label">${item.thai}(${item.label})</div>
+        <div class="mini-prob-bg"><div class="mini-prob-bar ${i===0?'top':''}" style="width:${item.prob}%"></div></div>
+        <div class="mini-prob-pct">${item.prob}%</div>
+      </div>`;
+    });
+    document.getElementById('imgPredResult').classList.add('show');
+  } catch(e) {
+    alert('เกิดข้อผิดพลาด: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 ทำนาย';
+  }
+}
+
+// ── Add to dataset ─────────────────────────────────────────────────────────────
+let dsSelectedLabel = null;
+const dsZone = document.getElementById('dsZone');
+dsZone.addEventListener('dragover', e => { e.preventDefault(); dsZone.classList.add('drag-over'); });
+dsZone.addEventListener('dragleave', () => dsZone.classList.remove('drag-over'));
+dsZone.addEventListener('drop', e => {
+  e.preventDefault(); dsZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    document.getElementById('dsInput').files = e.dataTransfer.files;
+    onDsSelect(document.getElementById('dsInput'));
+  }
+});
+function onDsSelect(input) {
+  if (!input.files || !input.files.length) return;
+  const file = input.files[0];
+  document.getElementById('dsThumb').src = URL.createObjectURL(file);
+  document.getElementById('dsName').textContent = file.name;
+  document.getElementById('dsPreview').style.display = 'block';
+  checkDsReady();
+}
+function selectLabel(lbl) {
+  dsSelectedLabel = lbl;
+  document.getElementById('dsLabel').value = lbl;
+  document.querySelectorAll('#labelSelect .label-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.label) === lbl);
+  });
+  checkDsReady();
+}
+function checkDsReady() {
+  const hasFile  = document.getElementById('dsInput').files.length > 0;
+  const hasLabel = dsSelectedLabel !== null;
+  document.getElementById('dsBtn').disabled = !(hasFile && hasLabel);
+}
+document.getElementById('datasetForm').addEventListener('submit', e => {
+  if (!dsSelectedLabel) { e.preventDefault(); alert('กรุณาเลือก Label ก่อน'); return; }
+  document.getElementById('dsBtn').textContent = '⏳ กำลังเพิ่ม...';
+  document.getElementById('dsBtn').disabled = true;
+});
+
+// ── Saved drawings ─────────────────────────────────────────────────────────────
+let allDrawings = [];
+let selectedDrawings = new Set();
+let drawingLabel = null;
+
+async function loadDrawings() {
+  const grid = document.getElementById('drawingsGrid');
+  grid.innerHTML = '<div style="color:var(--muted);padding:1rem;">⏳ กำลังโหลด...</div>';
+  try {
+    const resp = await fetch('/admin/drawings');
+    allDrawings = await resp.json();
+    document.getElementById('drawingCount').textContent = allDrawings.length + ' รูป';
+    renderDrawings();
+  } catch(e) {
+    grid.innerHTML = '<div style="color:var(--danger);padding:1rem;">โหลดไม่สำเร็จ</div>';
+  }
+}
+
+function renderDrawings() {
+  const grid = document.getElementById('drawingsGrid');
+  if (!allDrawings.length) {
+    grid.innerHTML = '<div style="color:var(--muted);padding:1rem;">📭 ยังไม่มีรูปที่บันทึก</div>';
+    return;
+  }
+  grid.innerHTML = allDrawings.map(d => `
+    <div class="drawing-card ${selectedDrawings.has(d.name)?'selected':''}" id="dc_${CSS.escape(d.name)}" onclick="toggleDrawing('${d.name}')">
+      <img src="/admin/drawings/image/${encodeURIComponent(d.name)}" alt="${d.name}" loading="lazy" />
+      <div class="drawing-name" title="${d.name}">${d.name.replace('drawing_','')}</div>
+      <button class="del-btn" onclick="event.stopPropagation();deleteDrawing('${d.name}')" title="ลบ">✕</button>
+    </div>`).join('');
+  updateSelectionUI();
+}
+
+function toggleDrawing(name) {
+  if (selectedDrawings.has(name)) selectedDrawings.delete(name);
+  else selectedDrawings.add(name);
+  const card = document.getElementById('dc_' + CSS.escape(name));
+  if (card) card.classList.toggle('selected', selectedDrawings.has(name));
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const n = selectedDrawings.size;
+  const actions = document.getElementById('drawingActions');
+  actions.style.display = n > 0 ? 'flex' : 'none';
+  document.getElementById('selectedCount').textContent = `เลือก ${n} รูป`;
+  document.getElementById('addDrawingsBtn').disabled = !(n > 0 && drawingLabel);
+}
+
+function selectDrawingLabel(lbl) {
+  drawingLabel = lbl;
+  document.querySelectorAll('#drawingLabelSelect .label-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.label) === lbl);
+  });
+  updateSelectionUI();
+}
+
+document.querySelectorAll('#drawingLabelSelect .label-btn').forEach(btn => {
+  btn.addEventListener('click', () => selectDrawingLabel(parseInt(btn.dataset.label)));
+});
+
+function selectAllDrawings() {
+  allDrawings.forEach(d => selectedDrawings.add(d.name));
+  renderDrawings();
+}
+
+function clearSelection() {
+  selectedDrawings.clear();
+  renderDrawings();
+}
+
+async function deleteDrawing(name) {
+  if (!confirm(`ลบ "${name}" ?`)) return;
+  await fetch(`/admin/drawings/delete/${encodeURIComponent(name)}`, { method: 'POST' });
+  selectedDrawings.delete(name);
+  await loadDrawings();
+}
+
+async function deleteSelected() {
+  if (!selectedDrawings.size) return;
+  if (!confirm(`ลบ ${selectedDrawings.size} รูปที่เลือก?`)) return;
+  for (const name of selectedDrawings) {
+    await fetch(`/admin/drawings/delete/${encodeURIComponent(name)}`, { method: 'POST' });
+  }
+  selectedDrawings.clear();
+  await loadDrawings();
+}
+
+async function addSelectedToDataset() {
+  if (!selectedDrawings.size || !drawingLabel) return;
+  const split = document.getElementById('drawingSplit').value;
+  const btn   = document.getElementById('addDrawingsBtn');
+  btn.disabled = true; btn.textContent = '⏳ กำลังเพิ่ม...';
+  let ok = 0;
+  for (const name of selectedDrawings) {
+    try {
+      const imgResp = await fetch(`/admin/drawings/image/${encodeURIComponent(name)}`);
+      const blob    = await imgResp.blob();
+      const fd      = new FormData();
+      fd.append('image_file', blob, name);
+      fd.append('label', drawingLabel);
+      fd.append('split', split);
+      const r = await fetch('/admin/add-to-dataset', { method: 'POST', body: fd });
+      if (r.ok || r.redirected) ok++;
+    } catch(e) { console.error(e); }
+  }
+  alert(`เพิ่มสำเร็จ ${ok}/${selectedDrawings.size} รูป เข้า dataset/${split}/${drawingLabel}/`);
+  selectedDrawings.clear();
+  drawingLabel = null;
+  document.querySelectorAll('#drawingLabelSelect .label-btn').forEach(b => b.classList.remove('active'));
+  await loadDrawings();
+  btn.textContent = '➕ เพิ่มเข้า Dataset';
+}
+
+// Load drawings on page load
+loadDrawings();
+</script>
+{% endblock %}
