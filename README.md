@@ -1,1 +1,96 @@
 # Thai-Digit-AI
+
+Members
+1) ณัฐริกา บุญส่ง 1660701846
+2) มินทร์ตรา พรรณเขียวหวาน 1660702166
+3) ธิดารัตน์ วิเชียร 1660702927
+4) วรินทร์ ชาติชนบท 1660704865
+5) พิมพ์ตะวัน ทองจูด 1660706233
+
+วัตถุประสงค์
+พัฒนาระบบรู้จำเลขไทยด้วย AI
+สร้าง dataset สำหรับฝึกโมเดล
+พัฒนาเว็บแอปสำหรับใช้งานจริง
+แสดงผลการทำนายแบบ real-time
+
+Diagram Architecture
+        ┌──────────────────────┐
+        │   Web Browser (User) │
+        │  Canvas Draw Number  │
+        └─────────┬────────────┘
+                  │ Base64 Image
+                  ▼
+        ┌──────────────────────┐
+        │   Flask Web Server   │
+        │   /predict API       │
+        └─────────┬────────────┘
+                  │ Preprocess Image
+                  ▼
+        ┌──────────────────────┐
+        │  PyTorch Model (.pt) │
+        │ CNN Classification   │
+        └─────────┬────────────┘
+                  │ Prediction
+                  ▼
+        ┌──────────────────────┐
+        │  JSON Response       │
+        │ Label + Confidence   │
+        └──────────────────────┘
+                  │
+                  ▼
+        ┌──────────────────────┐
+        │  Frontend Display    │
+        │ Result + Prob Graph  │
+        └──────────────────────┘
+
+
+Features
+UserPage : ผู้ใช้สามารถวาดตัวเลขไทย 51-55 เพื่อให้ AI ทำนายผลว่าคือเลขอะไร
+AdminPage : - สามารถอัปโหลดตัวโมเดลได้ใหม่โดยใช้ไฟล์โมเดลนามสกุล .pt
+            - ดูรายการโมเดลที่อัปโหลดได้ฃ
+            - ทดสอบทำนายจากรูปภาพ
+            - สามารถอัปโฆลดรูปภาพหรือเอาจากรูปที่ผู้ใช้ได้ทำการเขียนไว้เพื่อ Train/Test ได้
+            - จะเก็บรูปภาพที่ผู้ใช้ได้ทำการเขียนทั้งหมด
+
+            
+เทคโนโลยีที่ใช้
+🔬 Machine Learning
+PyTorch (Deep Learning Framework)
+CNN (Convolutional Neural Network)
+
+🖼️ Image Processing
+Pillow (PIL)
+NumPy
+
+🌐 Web Development
+Flask (Backend API)
+HTML / CSS / JavaScript (Frontend)
+
+🧪 Tools
+Python 3.14
+VS Code
+Git / GitHub
+
+วิธีการใช้งาน
+รันระบบ
+cd thai-digit-recognition/webapp
+python app.py
+
+จะได้ http://192.168.1.105:5000
+
+Libraries ที่ใช้
+torch
+torchvision
+flask
+pillow
+numpy
+werkzeug
+
+สรุป
+เป็นระบบ AI Web Application ที่สามารถรับ input จากผู้ใช้แบบ real-time และทำการทำนายเลขไทยด้วยโมเดล Deep Learning โดยใช้ PyTorch ร่วมกับ Flask ซึ่งสามารถนำไปต่อยอดในระบบ OCR หรือ AI education ได้
+
+จุดเด่นของระบบ
+ใช้งานผ่านเว็บได้ทันที
+real-time prediction
+ใช้ AI model จริง (PyTorch)
+มีระบบ admin อัปโหลดโมเดล
