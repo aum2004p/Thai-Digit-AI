@@ -61,6 +61,10 @@ python app.py
 
 จะได้ http://192.168.1.105:5000
 
+ใน AdminPage จะมีให้ Login
+admin
+admin1234
+
 Libraries ที่ใช้
 torch
 torchvision
